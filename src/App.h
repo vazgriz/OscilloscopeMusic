@@ -2,10 +2,13 @@
 #include <memory>
 
 #include "Audio.h"
+#include "Renderer.h"
+
+struct GLFWwindow;
 
 class App {
 public:
-    App(const char* filename);
+    App(GLFWwindow* window, const char* filename);
     App(const App& other) = delete;
     App& operator = (const App& other) = delete;
     App(App&& other) = default;
@@ -13,4 +16,5 @@ public:
 
 private:
     std::unique_ptr<Audio> m_audio;
+    std::unique_ptr<Renderer> m_renderer;
 };

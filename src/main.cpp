@@ -31,7 +31,7 @@ int main(int argc, const char** argv) {
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         GLFWwindow* window = glfwCreateWindow(800, 600, "Oscilloscope Music", nullptr, nullptr);
 
-        App app(argv[1]);
+        App app(window, argv[1]);
 
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
