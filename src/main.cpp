@@ -23,7 +23,7 @@ int main(int argc, const char** argv) {
             }
         }
 
-        if (!glfwVulkanSupported) {
+        if (!glfwVulkanSupported()) {
             std::cerr << "Vulkan is not supported" << std::endl;
             return 1;
         }
