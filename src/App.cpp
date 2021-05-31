@@ -5,3 +5,7 @@ App::App(GLFWwindow* window, const char* filename) {
     m_audio = std::make_unique<Audio>(filename);
     m_renderer = std::make_unique<Renderer>(window);
 }
+
+void App::update(float dt) {
+    m_renderer->render(dt);
+}

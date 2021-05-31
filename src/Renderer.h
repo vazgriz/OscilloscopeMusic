@@ -20,10 +20,19 @@ public:
     Renderer(Renderer&& other) = default;
     Renderer& operator = (Renderer&& other) = default;
 
+    ~Renderer();
+
+    void render(float dt);
+
 private:
     GLFWwindow* m_window;
     uint32_t m_width;
     uint32_t m_height;
+
+    uint32_t m_graphicsQueueIndex;
+    uint32_t m_presentQueueIndex;
+    const vk::Queue* m_graphicsQueue;
+    const vk::Queue* m_presentQueue;
 
     std::unique_ptr<vk::Instance> m_instance;
     std::unique_ptr<vk::Surface> m_surface;
@@ -31,6 +40,15 @@ private:
     std::unique_ptr<vk::Device> m_device;
     std::unique_ptr<vk::Swapchain> m_swapchain;
     std::vector<vk::ImageView> m_imageViews;
+    std::unique_ptr<vk::RenderPass> m_renderPass;
+    std::vector<vk::Framebuffer> m_framebuffers;
+
+    std::unique_ptr<vk::CommandPool> m_commandPool;
+    std::vector<vk::CommandBuffer> m_commandBuffers;
+
+    std::unique_ptr<vk::Semaphore> m_acquireSemaphore;
+    std::unique_ptr<vk::Semaphore> m_renderSemaphore;
+    std::vector<vk::Fence> m_fences;
 
     std::vector<std::string> getRequiredExtensions(GLFWwindow* window);
     bool validationLayersSupported();
@@ -47,6 +65,17 @@ private:
     void createDevice();
     void createSwapchain();
     void createImageViews();
+    void createRenderPass();
+    void createFramebuffers();
+    void createCommandPool();
+    void createCommandBuffers();
+    void createSemaphores();
+    void createFences();
 
     void recreateSwapchain();
+
+    uint32_t acquireImage();
+    vk::CommandBuffer& recordCommandBuffer(uint32_t index);
+    void submitCommandBuffer(uint32_t index, vk::CommandBuffer& commandBuffer);
+    void presentImage(uint32_t index);
 };

@@ -28,6 +28,70 @@ Renderer::Renderer(GLFWwindow* window) {
     createSurface();
     createDevice();
     recreateSwapchain();
+    createCommandPool();
+    createCommandBuffers();
+    createSemaphores();
+    createFences();
+}
+
+Renderer::~Renderer() {
+    vk::Fence::wait(*m_device, m_fences, true);
+}
+
+uint32_t Renderer::acquireImage() {
+    uint32_t index;
+    m_swapchain->acquireNextImage(-1, m_acquireSemaphore.get(), nullptr, index);
+    return index;
+}
+
+vk::CommandBuffer& Renderer::recordCommandBuffer(uint32_t index) {
+    m_fences[index].wait();
+    m_fences[index].reset();
+
+    vk::CommandBuffer& commandBuffer = m_commandBuffers[index];
+    commandBuffer.reset(vk::CommandBufferResetFlags::None);
+
+    vk::CommandBufferBeginInfo beginInfo = {};
+    commandBuffer.begin(beginInfo);
+
+    vk::RenderPassBeginInfo renderPassInfo = {};
+    renderPassInfo.renderPass = m_renderPass.get();
+    renderPassInfo.framebuffer = &m_framebuffers[index];
+    renderPassInfo.clearValues = { { } };
+    renderPassInfo.renderArea = { {}, {m_width, m_height } };
+
+    commandBuffer.beginRenderPass(renderPassInfo,vk::SubpassContents::Inline);
+
+    commandBuffer.endRenderPass();
+    commandBuffer.end();
+
+    return commandBuffer;
+}
+
+void Renderer::submitCommandBuffer(uint32_t index, vk::CommandBuffer& commandBuffer) {
+    vk::SubmitInfo info = {};
+    info.commandBuffers = { commandBuffer };
+    info.waitSemaphores = { *m_acquireSemaphore };
+    info.waitDstStageMask = { vk::PipelineStageFlags::ColorAttachmentOutput };
+    info.signalSemaphores = { *m_renderSemaphore };
+
+    m_graphicsQueue->submit({ info }, &m_fences[index]);
+}
+
+void Renderer::presentImage(uint32_t index) {
+    vk::PresentInfo info = {};
+    info.imageIndices = { index };
+    info.swapchains = { *m_swapchain };
+    info.waitSemaphores = { *m_renderSemaphore };
+
+    m_presentQueue->present(info);
+}
+
+void Renderer::render(float dt) {
+    size_t index = acquireImage();
+    vk::CommandBuffer& commandBuffer = recordCommandBuffer(index);
+    submitCommandBuffer(index, commandBuffer);
+    presentImage(index);
 }
 
 std::vector<std::string> Renderer::getRequiredExtensions(GLFWwindow* window) {
@@ -152,6 +216,11 @@ void Renderer::createDevice() {
     info.enabledExtensionNames = deviceExtensions;
 
     m_device = std::make_unique<vk::Device>(*m_physicalDevice, info);
+
+    m_graphicsQueueIndex = indices.graphics.value();
+    m_presentQueueIndex = indices.present.value();
+    m_graphicsQueue = &m_device->getQueue(indices.graphics.value(), 0);
+    m_presentQueue = &m_device->getQueue(indices.present.value(), 0);
 }
 
 vk::SurfaceFormat Renderer::chooseFormat() {
@@ -232,7 +301,79 @@ void Renderer::createImageViews() {
     }
 }
 
+void Renderer::createRenderPass() {
+    vk::AttachmentDescription attachment = {};
+    attachment.initialLayout = vk::ImageLayout::Undefined;
+    attachment.finalLayout = vk::ImageLayout::PresentSrcKHR;
+    attachment.format = m_swapchain->format();
+    attachment.samples = vk::SampleCountFlags::_1;
+    attachment.loadOp = vk::AttachmentLoadOp::DontCare;
+    attachment.storeOp = vk::AttachmentStoreOp::Store;
+
+    vk::AttachmentReference ref = {};
+    ref.attachment = 0;
+    ref.layout = vk::ImageLayout::ColorAttachmentOptimal;
+
+    vk::SubpassDescription subpass = {};
+    subpass.colorAttachments = { ref };
+
+    vk::RenderPassCreateInfo info = {};
+    info.attachments = { attachment };
+    info.subpasses = { subpass };
+
+    m_renderPass = std::make_unique<vk::RenderPass>(*m_device, info);
+}
+
+void Renderer::createFramebuffers() {
+    for (auto& imageView : m_imageViews) {
+        vk::FramebufferCreateInfo info = {};
+        info.attachments = { imageView };
+        info.width = m_swapchain->extent().width;
+        info.height = m_swapchain->extent().height;
+        info.renderPass = m_renderPass.get();
+        info.layers = 1;
+
+        m_framebuffers.emplace_back(*m_device, info);
+    }
+}
+
 void Renderer::recreateSwapchain() {
     createSwapchain();
     createImageViews();
+    createRenderPass();
+    createFramebuffers();
+}
+
+void Renderer::createCommandPool() {
+    vk::CommandPoolCreateInfo info = {};
+    info.flags = vk::CommandPoolCreateFlags::ResetCommandBuffer;
+    info.queueFamilyIndex = m_graphicsQueueIndex;
+
+    m_commandPool = std::make_unique<vk::CommandPool>(*m_device, info);
+}
+
+void Renderer::createCommandBuffers() {
+    for (size_t i = 0; i < m_swapchain->images().size(); i++) {
+        vk::CommandBufferAllocateInfo info = {};
+        info.commandBufferCount = 1;
+        info.commandPool = m_commandPool.get();
+
+        m_commandBuffers.emplace_back(std::move(m_commandPool->allocate(info)[0]));
+    }
+}
+
+void Renderer::createSemaphores() {
+    vk::SemaphoreCreateInfo info = {};
+
+    m_acquireSemaphore = std::make_unique<vk::Semaphore>(*m_device, info);
+    m_renderSemaphore = std::make_unique<vk::Semaphore>(*m_device, info);
+}
+
+void Renderer::createFences() {
+    vk::FenceCreateInfo info = {};
+    info.flags = vk::FenceCreateFlags::Signaled;
+
+    for (size_t i = 0; i < m_swapchain->images().size(); i++) {
+        m_fences.emplace_back(*m_device, info);
+    }
 }

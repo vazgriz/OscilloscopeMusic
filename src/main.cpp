@@ -31,10 +31,19 @@ int main(int argc, const char** argv) {
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         GLFWwindow* window = glfwCreateWindow(800, 600, "Oscilloscope Music", nullptr, nullptr);
 
-        App app(window, argv[1]);
+        {
+            App app(window, argv[1]);
+            float now = (float)glfwGetTime();
+            float lastTime = 0;
 
-        while (!glfwWindowShouldClose(window)) {
-            glfwPollEvents();
+            while (!glfwWindowShouldClose(window)) {
+                float now = (float)glfwGetTime();
+                float elapsed = now - lastTime;
+                lastTime = now;
+
+                glfwPollEvents();
+                app.update(elapsed);
+            }
         }
 
         glfwDestroyWindow(window);

@@ -14,6 +14,8 @@ public:
     App(App&& other) = default;
     App& operator = (App&& other) = default;
 
+    void update(float dt);
+
 private:
     std::unique_ptr<Audio> m_audio;
     std::unique_ptr<Renderer> m_renderer;
