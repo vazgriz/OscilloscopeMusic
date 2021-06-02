@@ -75,7 +75,7 @@ private:
     void recreateSwapchain();
 
     uint32_t acquireImage();
-    vk::CommandBuffer& recordCommandBuffer(uint32_t index);
-    void submitCommandBuffer(uint32_t index, vk::CommandBuffer& commandBuffer);
+    vk::CommandBuffer& recordCommandBuffer(uint32_t index, vk::Fence& fence);
+    void submitCommandBuffer(vk::CommandBuffer& commandBuffer, const vk::Fence& fence);
     void presentImage(uint32_t index);
 };

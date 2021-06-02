@@ -44,9 +44,9 @@ uint32_t Renderer::acquireImage() {
     return index;
 }
 
-vk::CommandBuffer& Renderer::recordCommandBuffer(uint32_t index) {
-    m_fences[index].wait();
-    m_fences[index].reset();
+vk::CommandBuffer& Renderer::recordCommandBuffer(uint32_t index, vk::Fence& fence) {
+    fence.wait();
+    fence.reset();
 
     vk::CommandBuffer& commandBuffer = m_commandBuffers[index];
     commandBuffer.reset(vk::CommandBufferResetFlags::None);
@@ -58,9 +58,9 @@ vk::CommandBuffer& Renderer::recordCommandBuffer(uint32_t index) {
     renderPassInfo.renderPass = m_renderPass.get();
     renderPassInfo.framebuffer = &m_framebuffers[index];
     renderPassInfo.clearValues = { { } };
-    renderPassInfo.renderArea = { {}, {m_width, m_height } };
+    renderPassInfo.renderArea = { {}, { m_width, m_height } };
 
-    commandBuffer.beginRenderPass(renderPassInfo,vk::SubpassContents::Inline);
+    commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::Inline);
 
     commandBuffer.endRenderPass();
     commandBuffer.end();
@@ -68,14 +68,14 @@ vk::CommandBuffer& Renderer::recordCommandBuffer(uint32_t index) {
     return commandBuffer;
 }
 
-void Renderer::submitCommandBuffer(uint32_t index, vk::CommandBuffer& commandBuffer) {
+void Renderer::submitCommandBuffer(vk::CommandBuffer& commandBuffer, const vk::Fence& fence) {
     vk::SubmitInfo info = {};
     info.commandBuffers = { commandBuffer };
     info.waitSemaphores = { *m_acquireSemaphore };
     info.waitDstStageMask = { vk::PipelineStageFlags::ColorAttachmentOutput };
     info.signalSemaphores = { *m_renderSemaphore };
 
-    m_graphicsQueue->submit({ info }, &m_fences[index]);
+    m_graphicsQueue->submit({ info }, &fence);
 }
 
 void Renderer::presentImage(uint32_t index) {
@@ -88,9 +88,10 @@ void Renderer::presentImage(uint32_t index) {
 }
 
 void Renderer::render(float dt) {
-    size_t index = acquireImage();
-    vk::CommandBuffer& commandBuffer = recordCommandBuffer(index);
-    submitCommandBuffer(index, commandBuffer);
+    uint32_t index = acquireImage();
+    vk::Fence& fence = m_fences[index];
+    vk::CommandBuffer& commandBuffer = recordCommandBuffer(index, fence);
+    submitCommandBuffer(commandBuffer, fence);
     presentImage(index);
 }
 
@@ -307,8 +308,10 @@ void Renderer::createRenderPass() {
     attachment.finalLayout = vk::ImageLayout::PresentSrcKHR;
     attachment.format = m_swapchain->format();
     attachment.samples = vk::SampleCountFlags::_1;
-    attachment.loadOp = vk::AttachmentLoadOp::DontCare;
+    attachment.loadOp = vk::AttachmentLoadOp::Clear;
     attachment.storeOp = vk::AttachmentStoreOp::Store;
+    attachment.stencilLoadOp = vk::AttachmentLoadOp::DontCare;
+    attachment.stencilStoreOp = vk::AttachmentStoreOp::DontCare;
 
     vk::AttachmentReference ref = {};
     ref.attachment = 0;

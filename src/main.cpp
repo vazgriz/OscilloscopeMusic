@@ -2,6 +2,7 @@
 #include <fstream>
 #include <GLFW/glfw3.h>
 #include <stdexcept>
+#include <sstream>
 
 #include "App.h"
 
@@ -33,13 +34,25 @@ int main(int argc, const char** argv) {
 
         {
             App app(window, argv[1]);
-            float now = (float)glfwGetTime();
             float lastTime = 0;
+            float lastFPSTime = 0;
+            size_t frameCount = 0;
 
             while (!glfwWindowShouldClose(window)) {
                 float now = (float)glfwGetTime();
                 float elapsed = now - lastTime;
+                float elapsedFPS = now - lastFPSTime;
                 lastTime = now;
+                frameCount++;
+
+                if (elapsedFPS > 0.25f) {
+                    std::stringstream stream;
+                    stream << "OpenGL Lines (" << ((int)round(frameCount / elapsed)) << " fps)";
+                    glfwSetWindowTitle(window, stream.str().c_str());
+
+                    frameCount = 0;
+                    lastFPSTime = now;
+                }
 
                 glfwPollEvents();
                 app.update(elapsed);
