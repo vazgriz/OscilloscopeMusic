@@ -47,7 +47,7 @@ int main(int argc, const char** argv) {
 
                 if (elapsedFPS > 0.25f) {
                     std::stringstream stream;
-                    stream << "OpenGL Lines (" << ((int)round(frameCount / elapsed)) << " fps)";
+                    stream << "OpenGL Lines (" << ((int)round(frameCount / elapsedFPS)) << " fps)";
                     glfwSetWindowTitle(window, stream.str().c_str());
 
                     frameCount = 0;
