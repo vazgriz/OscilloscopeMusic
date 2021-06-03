@@ -5,6 +5,11 @@
 
 struct GLFWwindow;
 
+class IRenderer {
+public:
+    virtual void render(float dt) = 0;
+};
+
 class Renderer {
     struct QueueFamilyIndices {
         std::optional<uint32_t> graphics;
@@ -22,7 +27,11 @@ public:
 
     ~Renderer();
 
+    vk::Device& device() const { return *m_device; }
+
     void render(float dt);
+
+    void addRenderer(IRenderer& renderer);
 
 private:
     GLFWwindow* m_window;
@@ -60,6 +69,8 @@ private:
     vk::PresentMode choosePresentMode();
     vk::Extent2D chooseExtent(vk::SurfaceCapabilities& capabilities);
 
+    std::vector<IRenderer*> m_renderers;
+
     void createInstance();
     void createSurface();
     void createDevice();
@@ -75,7 +86,7 @@ private:
     void recreateSwapchain();
 
     uint32_t acquireImage();
-    vk::CommandBuffer& recordCommandBuffer(uint32_t index, vk::Fence& fence);
+    vk::CommandBuffer& recordCommandBuffer(float dt, uint32_t index, vk::Fence& fence);
     void submitCommandBuffer(vk::CommandBuffer& commandBuffer, const vk::Fence& fence);
     void presentImage(uint32_t index);
 };

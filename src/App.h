@@ -3,6 +3,7 @@
 
 #include "Audio.h"
 #include "Renderer.h"
+#include "Line.h"
 
 struct GLFWwindow;
 
@@ -21,6 +22,7 @@ public:
 private:
     std::unique_ptr<Audio> m_audio;
     std::unique_ptr<Renderer> m_renderer;
+    std::unique_ptr<Line> m_line;
     ma_pcm_rb m_ringBuffer;
 
     uint32_t calculateFramesToRead(float dt);

@@ -39,13 +39,17 @@ Renderer::~Renderer() {
     m_device->waitIdle();
 }
 
+void Renderer::addRenderer(IRenderer& renderer) {
+    m_renderers.push_back(&renderer);
+}
+
 uint32_t Renderer::acquireImage() {
     uint32_t index;
     m_swapchain->acquireNextImage(-1, m_acquireSemaphore.get(), nullptr, index);
     return index;
 }
 
-vk::CommandBuffer& Renderer::recordCommandBuffer(uint32_t index, vk::Fence& fence) {
+vk::CommandBuffer& Renderer::recordCommandBuffer(float dt, uint32_t index, vk::Fence& fence) {
     fence.wait();
     fence.reset();
 
@@ -62,6 +66,10 @@ vk::CommandBuffer& Renderer::recordCommandBuffer(uint32_t index, vk::Fence& fenc
     renderPassInfo.renderArea = { {}, { m_width, m_height } };
 
     commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::Inline);
+
+    for (auto renderer : m_renderers) {
+        renderer->render(dt);
+    }
 
     commandBuffer.endRenderPass();
     commandBuffer.end();
@@ -91,7 +99,7 @@ void Renderer::presentImage(uint32_t index) {
 void Renderer::render(float dt) {
     uint32_t index = acquireImage();
     vk::Fence& fence = m_fences[index];
-    vk::CommandBuffer& commandBuffer = recordCommandBuffer(index, fence);
+    vk::CommandBuffer& commandBuffer = recordCommandBuffer(dt, index, fence);
     submitCommandBuffer(commandBuffer, fence);
     presentImage(index);
 }

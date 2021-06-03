@@ -9,6 +9,7 @@ set(VULKAN_LIB "" CACHE FILEPATH "Path to Vulkan binary")
 set(MINIAUDIO_PATH "" CACHE PATH "Path to miniaudio 0.10.35 root")
 set(VULKAN_WRAPPER_INCLUDE "" CACHE PATH "Path to Vulkan Wrapper (VKW) include folder")
 set(VULKAN_WRAPPER_LIB "" CACHE FILEPATH "Path to VKW binary")
+set(GLSL_COMPILER "" CACHE STRING "Command to execute Vulkan GLSL compiler")
 
 add_executable("OscilloscopeMusic"
     "src/main.cpp"
@@ -19,6 +20,8 @@ add_executable("OscilloscopeMusic"
     "src/Audio.cpp"
     "src/Renderer.h"
     "src/Renderer.cpp"
+    "src/Line.h"
+    "src/Line.cpp"
 )
 
 target_compile_features("OscilloscopeMusic" PRIVATE cxx_std_17)
@@ -35,3 +38,27 @@ target_link_libraries("OscilloscopeMusic"
     ${VULKAN_LIB}
     ${VULKAN_WRAPPER_LIB}
 )
+
+set(SHADER_SOURCES
+    "shaders/line.vert"
+    "shaders/line.frag"
+)
+
+set(SHADER_BINARIES)
+
+foreach(SHADER_SOURCE ${SHADER_SOURCES})
+    get_filename_component(FILE_NAME ${SHADER_SOURCE} NAME)
+    set(SPIRV "${PROJECT_BINARY_DIR}/shaders/${FILE_NAME}.spv")
+    add_custom_command(
+        OUTPUT ${SPIRV}
+        COMMAND ${GLSL_COMPILER} "${PROJECT_SOURCE_DIR}/${SHADER_SOURCE}" -o ${SPIRV}
+        DEPENDS ${SHADER_SOURCE})
+    list(APPEND SHADER_BINARIES ${SPIRV})
+endforeach(SHADER_SOURCE)
+
+add_custom_target(
+    CompileShaders 
+    DEPENDS ${SHADER_BINARIES}
+)
+
+add_dependencies("OscilloscopeMusic" CompileShaders)
