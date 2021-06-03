@@ -57,6 +57,8 @@ int main(int argc, const char** argv) {
                 glfwPollEvents();
                 app.update(elapsed);
             }
+
+            app.waitIdle();
         }
 
         glfwDestroyWindow(window);

@@ -6,9 +6,13 @@ App::App(GLFWwindow* window, const char* filename) {
 
     m_audio = std::make_unique<Audio>(filename, *this);
     m_renderer = std::make_unique<Renderer>(window);
-    m_line = std::make_unique<Line>(m_renderer->device());
+    m_line = std::make_unique<Line>(*m_renderer);
 
     m_renderer->addRenderer(*m_line);
+}
+
+void App::waitIdle() {
+    m_renderer->waitIdle();
 }
 
 void App::update(float dt) {

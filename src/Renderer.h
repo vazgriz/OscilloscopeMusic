@@ -7,7 +7,7 @@ struct GLFWwindow;
 
 class IRenderer {
 public:
-    virtual void render(float dt) = 0;
+    virtual void render(float dt, vk::CommandBuffer& commandBuffer) = 0;
 };
 
 class Renderer {
@@ -25,9 +25,12 @@ public:
     Renderer(Renderer&& other) = default;
     Renderer& operator = (Renderer&& other) = default;
 
-    ~Renderer();
+    void waitIdle();
 
+    uint32_t width() const { return m_width; }
+    uint32_t height() const { return m_height; }
     vk::Device& device() const { return *m_device; }
+    vk::RenderPass& renderPass() const { return *m_renderPass; }
 
     void render(float dt);
 

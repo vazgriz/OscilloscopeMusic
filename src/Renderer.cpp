@@ -34,7 +34,7 @@ Renderer::Renderer(GLFWwindow* window) {
     createFences();
 }
 
-Renderer::~Renderer() {
+void Renderer::waitIdle() {
     vk::Fence::wait(*m_device, m_fences, true);
     m_device->waitIdle();
 }
@@ -68,7 +68,7 @@ vk::CommandBuffer& Renderer::recordCommandBuffer(float dt, uint32_t index, vk::F
     commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::Inline);
 
     for (auto renderer : m_renderers) {
-        renderer->render(dt);
+        renderer->render(dt, commandBuffer);
     }
 
     commandBuffer.endRenderPass();

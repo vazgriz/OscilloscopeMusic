@@ -15,6 +15,8 @@ public:
     App(App&& other) = default;
     App& operator = (App&& other) = default;
 
+    void waitIdle();
+
     void update(float dt);
 
     void addAudioSamples(uint32_t frameCount, AudioFrame* frames);
