@@ -36,6 +36,7 @@ Renderer::Renderer(GLFWwindow* window) {
 
 Renderer::~Renderer() {
     vk::Fence::wait(*m_device, m_fences, true);
+    m_device->waitIdle();
 }
 
 uint32_t Renderer::acquireImage() {

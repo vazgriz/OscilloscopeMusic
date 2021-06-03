@@ -16,7 +16,13 @@ public:
 
     void update(float dt);
 
+    void addAudioSamples(uint32_t frameCount, AudioFrame* frames);
+
 private:
     std::unique_ptr<Audio> m_audio;
     std::unique_ptr<Renderer> m_renderer;
+    ma_pcm_rb m_ringBuffer;
+
+    uint32_t calculateFramesToRead(float dt);
+    void readAudioFrames(float dt);
 };
