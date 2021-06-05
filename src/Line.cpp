@@ -1,14 +1,15 @@
 #include "Line.h"
 #include <fstream>
+#include <glm/gtc/matrix_transform.hpp>
 
 #define STAGING_BUFFER_SIZE (64 * 1024 * 1024)
 #define VERTEX_BUFFER_SIZE (64 * 1024 * 1024)
 #define INDEX_BUFFER_SIZE (64 * 1024 * 1024)
 
 Vertex vertices[] = {
-    { {  0.0f, -1.0f, 0.0f } },
-    { {  1.0f,  1.0f, 0.0f } },
-    { { -1.0f,  1.0f, 0.0f } }
+    { {  000.0f,  100.0f, 0.0f } },
+    { {  100.0f, -100.0f, 0.0f } },
+    { { -100.0f, -100.0f, 0.0f } }
 };
 
 uint32_t indices[] = {
@@ -21,6 +22,10 @@ Line::Line(Renderer& renderer) {
     m_renderPass = &renderer.renderPass();
 
     createBuffers();
+    createDescriptorPool();
+    createDescriptorSetLayout();
+    createDescriptor();
+    writeDescriptor();
     createPipelineLayout();
     createPipeline();
 
@@ -28,7 +33,17 @@ Line::Line(Renderer& renderer) {
     transferData(sizeof(indices), &indices, *m_indexBuffer, vk::AccessFlags::IndexRead, vk::PipelineStageFlags::VertexInput);
 }
 
+void Line::updateUniformBuffer() {
+    float width = static_cast<float>(m_renderer->width()) / 2;
+    float height = static_cast<float>(m_renderer->height()) / 2;
+
+    UniformBuffer& uniform = *m_uniformBufferPtr;
+    uniform.projection = glm::orthoRH_ZO<float>(-width, width, -height, height, 0, 1);
+    uniform.projection[1][1] *= -1;
+}
+
 void Line::render(float dt, vk::CommandBuffer& commandBuffer) {
+    updateUniformBuffer();
     handleTransfers(commandBuffer);
 
     vk::RenderPassBeginInfo renderPassInfo = {};
@@ -56,6 +71,7 @@ void Line::render(float dt, vk::CommandBuffer& commandBuffer) {
     vk::DeviceSize offset = 0;
     commandBuffer.bindVertexBuffers(0, { *m_vertexBuffer }, { offset });
     commandBuffer.bindIndexBuffer(*m_indexBuffer, 0, vk::IndexType::Uint32);
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::Graphics, *m_pipelineLayout, 0, { *m_descriptorSet }, nullptr);
 
     commandBuffer.drawIndexed(3, 1, 0, 0, 0);
 
@@ -91,7 +107,7 @@ void Line::transferData(size_t size, void* data, vk::Buffer& destinationBuffer, 
     vk::BufferMemoryBarrier barrier = {};
     barrier.buffer = &destinationBuffer;
     barrier.size = static_cast<vk::DeviceSize>(size);
-    barrier.offset = static_cast<vk::DeviceSize>(m_stagingOffset);
+    barrier.offset = 0;
     barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.srcAccessMask = vk::AccessFlags::HostWrite;
@@ -166,11 +182,60 @@ void Line::createBuffers() {
         m_uniformBufferMemory = std::make_unique<vk::DeviceMemory>(allocateMemory(*m_uniformBuffer,
             vk::MemoryPropertyFlags::HostVisible | vk::MemoryPropertyFlags::HostCoherent,
             vk::MemoryPropertyFlags::DeviceLocal));
+
+        m_uniformBufferPtr = static_cast<UniformBuffer*>(m_uniformBufferMemory->map(0, sizeof(UniformBuffer)));
     }
+}
+
+void Line::createDescriptorPool() {
+    vk::DescriptorPoolCreateInfo info = {};
+    info.maxSets = 1;
+    info.poolSizes = {
+        { vk::DescriptorType::UniformBuffer, 1 }
+    };
+
+    m_descriptorPool = std::make_unique<vk::DescriptorPool>(*m_device, info);
+}
+
+void Line::createDescriptorSetLayout() {
+    vk::DescriptorSetLayoutBinding binding = {};
+    binding.binding = 0;
+    binding.descriptorCount = 1;
+    binding.descriptorType = vk::DescriptorType::UniformBuffer;
+    binding.stageFlags = vk::ShaderStageFlags::Vertex | vk::ShaderStageFlags::Fragment;
+
+    vk::DescriptorSetLayoutCreateInfo info = {};
+    info.bindings = {
+        binding
+    };
+
+    m_descriptorSetLayout = std::make_unique<vk::DescriptorSetLayout>(*m_device, info);
+}
+
+void Line::createDescriptor() {
+    vk::DescriptorSetAllocateInfo info = {};
+    info.descriptorPool = m_descriptorPool.get();
+    info.setLayouts = { *m_descriptorSetLayout };
+
+    m_descriptorSet = std::make_unique<vk::DescriptorSet>(std::move(m_descriptorPool->allocate(info)[0]));
+}
+
+void Line::writeDescriptor() {
+    vk::DescriptorBufferInfo buffer = {};
+    buffer.buffer = m_uniformBuffer.get();
+    buffer.range = sizeof(UniformBuffer);
+
+    vk::WriteDescriptorSet write = {};
+    write.descriptorType = vk::DescriptorType::UniformBuffer;
+    write.bufferInfo = { buffer };
+    write.dstSet = m_descriptorSet.get();
+
+    m_descriptorSet->update(*m_device, write, nullptr);
 }
 
 void Line::createPipelineLayout() {
     vk::PipelineLayoutCreateInfo info = {};
+    info.setLayouts = { *m_descriptorSetLayout };
 
     m_pipelineLayout = std::make_unique<vk::PipelineLayout>(*m_device, info);
 }

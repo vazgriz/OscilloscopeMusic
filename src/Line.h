@@ -35,6 +35,9 @@ private:
     Renderer* m_renderer;
     vk::Device* m_device;
     vk::RenderPass* m_renderPass;
+    std::unique_ptr<vk::DescriptorPool> m_descriptorPool;
+    std::unique_ptr<vk::DescriptorSetLayout> m_descriptorSetLayout;
+    std::unique_ptr<vk::DescriptorSet> m_descriptorSet;
     std::unique_ptr<vk::PipelineLayout> m_pipelineLayout;
     std::unique_ptr<vk::Pipeline> m_pipeline;
 
@@ -55,12 +58,20 @@ private:
     size_t m_stagingOffset = 0;
     std::vector<Transfer> m_transfers;
 
+    UniformBuffer* m_uniformBufferPtr;
+
     vk::DeviceMemory allocateMemory(vk::Buffer& buffer, vk::MemoryPropertyFlags required, vk::MemoryPropertyFlags preferred);
     void createBuffers();
 
     void transferData(size_t size, void* data, vk::Buffer& destinationBuffer, vk::AccessFlags destinationAccess, vk::PipelineStageFlags stage);
     void handleTransfers(vk::CommandBuffer& commandBuffer);
 
+    void updateUniformBuffer();
+
+    void createDescriptorPool();
+    void createDescriptorSetLayout();
+    void createDescriptor();
+    void writeDescriptor();
     void createPipelineLayout();
     void createPipeline();
 };
