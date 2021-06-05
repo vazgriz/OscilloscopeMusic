@@ -1,11 +1,16 @@
 #include "Line.h"
 #include <fstream>
 
+#define STAGING_BUFFER_SIZE (64 * 1024 * 1024)
+#define VERTEX_BUFFER_SIZE (64 * 1024 * 1024)
+#define INDEX_BUFFER_SIZE (64 * 1024 * 1024)
+
 Line::Line(Renderer& renderer) {
     m_renderer = &renderer;
     m_device = &renderer.device();
     m_renderPass = &renderer.renderPass();
 
+    createBuffers();
     createPipelineLayout();
     createPipeline();
 }
@@ -14,8 +19,8 @@ void Line::render(float dt, vk::CommandBuffer& commandBuffer) {
     commandBuffer.bindPipeline(vk::PipelineBindPoint::Graphics, *m_pipeline);
 
     vk::Viewport viewport = {};
-    viewport.width = m_renderer->width();
-    viewport.height = m_renderer->height();
+    viewport.width = static_cast<float>(m_renderer->width());
+    viewport.height = static_cast<float>(m_renderer->height());
     viewport.maxDepth = 1;
 
     vk::Rect2D scissor = {};
@@ -45,6 +50,56 @@ vk::ShaderModule Line::loadShader(const std::string& filename) {
     info.code = std::move(loadFile(filename));
 
     return vk::ShaderModule(*m_device, info);
+}
+
+vk::DeviceMemory Line::allocateMemory(vk::Buffer& buffer, vk::MemoryPropertyFlags required, vk::MemoryPropertyFlags preferred) {
+    return m_renderer->allocateMemory(buffer.requirements(), required, preferred);
+}
+
+void Line::createBuffers() {
+    {
+        vk::BufferCreateInfo info = {};
+        info.size = STAGING_BUFFER_SIZE;
+        info.usage = vk::BufferUsageFlags::TransferSrc;
+
+        m_stagingBuffer = std::make_unique<vk::Buffer>(m_renderer->device(), info);
+        m_stagingBufferMemory = std::make_unique<vk::DeviceMemory>(allocateMemory(*m_stagingBuffer,
+            vk::MemoryPropertyFlags::HostVisible | vk::MemoryPropertyFlags::HostCoherent,
+            vk::MemoryPropertyFlags::DeviceLocal));
+    }
+
+    {
+        vk::BufferCreateInfo info = {};
+        info.size = VERTEX_BUFFER_SIZE;
+        info.usage = vk::BufferUsageFlags::TransferDst | vk::BufferUsageFlags::VertexBuffer;
+
+        m_vertexBuffer = std::make_unique<vk::Buffer>(m_renderer->device(), info);
+        m_vertexBufferMemory = std::make_unique<vk::DeviceMemory>(allocateMemory(*m_stagingBuffer,
+            vk::MemoryPropertyFlags::DeviceLocal,
+            vk::MemoryPropertyFlags::None));
+    }
+
+    {
+        vk::BufferCreateInfo info = {};
+        info.size = INDEX_BUFFER_SIZE;
+        info.usage = vk::BufferUsageFlags::TransferDst | vk::BufferUsageFlags::IndexBuffer;
+
+        m_indexBuffer = std::make_unique<vk::Buffer>(m_renderer->device(), info);
+        m_indexBufferMemory = std::make_unique<vk::DeviceMemory>(allocateMemory(*m_stagingBuffer,
+        vk::MemoryPropertyFlags::DeviceLocal,
+            vk::MemoryPropertyFlags::None));
+    }
+
+    {
+        vk::BufferCreateInfo info = {};
+        info.size = sizeof(UniformBuffer);
+        info.usage = vk::BufferUsageFlags::TransferDst | vk::BufferUsageFlags::UniformBuffer;
+
+        m_uniformBuffer = std::make_unique<vk::Buffer>(m_renderer->device(), info);
+        m_uniformBufferMemory = std::make_unique<vk::DeviceMemory>(allocateMemory(*m_stagingBuffer,
+            vk::MemoryPropertyFlags::HostVisible | vk::MemoryPropertyFlags::HostCoherent,
+            vk::MemoryPropertyFlags::DeviceLocal));
+    }
 }
 
 void Line::createPipelineLayout() {

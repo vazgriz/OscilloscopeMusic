@@ -14,6 +14,7 @@ class Renderer {
     struct QueueFamilyIndices {
         std::optional<uint32_t> graphics;
         std::optional<uint32_t> present;
+        std::optional<uint32_t> transfer;
 
         bool isComplete();
     };
@@ -32,6 +33,8 @@ public:
     vk::Device& device() const { return *m_device; }
     vk::RenderPass& renderPass() const { return *m_renderPass; }
 
+    vk::DeviceMemory allocateMemory(const vk::MemoryRequirements& requriements, vk::MemoryPropertyFlags required, vk::MemoryPropertyFlags preferred);
+
     void render(float dt);
 
     void addRenderer(IRenderer& renderer);
@@ -43,8 +46,10 @@ private:
 
     uint32_t m_graphicsQueueIndex;
     uint32_t m_presentQueueIndex;
+    uint32_t m_transferQueueIndex;
     const vk::Queue* m_graphicsQueue;
     const vk::Queue* m_presentQueue;
+    const vk::Queue* m_transferQueue;
 
     std::unique_ptr<vk::Instance> m_instance;
     std::unique_ptr<vk::Surface> m_surface;
@@ -87,6 +92,8 @@ private:
     void createFences();
 
     void recreateSwapchain();
+
+    uint32_t findMemoryType(uint32_t requirements, vk::MemoryPropertyFlags required, vk::MemoryPropertyFlags preferred);
 
     uint32_t acquireImage();
     vk::CommandBuffer& recordCommandBuffer(float dt, uint32_t index, vk::Fence& fence);

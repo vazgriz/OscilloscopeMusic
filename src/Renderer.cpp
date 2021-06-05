@@ -96,6 +96,37 @@ void Renderer::presentImage(uint32_t index) {
     m_presentQueue->present(info);
 }
 
+uint32_t Renderer::findMemoryType(uint32_t requirements, vk::MemoryPropertyFlags required, vk::MemoryPropertyFlags preferred) {
+    const std::vector<vk::MemoryType>& types = m_physicalDevice->memoryProperties().memoryTypes;
+    preferred = preferred | required;
+
+    //check if all preferred flags can be sastisfied
+    for (uint32_t i = 0; i < types.size(); i++) {
+        const vk::MemoryType& memoryType = types[i];
+        if (requirements & (1 << i) && (memoryType.propertyFlags & preferred) == preferred) {
+            return i;
+        }
+    }
+
+    //check if the required flags can be statisfied
+    for (uint32_t i = 0; i < types.size(); i++) {
+        const vk::MemoryType& memoryType = types[i];
+        if (requirements & (1 << i) && (memoryType.propertyFlags & required) == required) {
+            return i;
+        }
+    }
+
+    throw std::runtime_error("Failed to find device memory type");
+}
+
+vk::DeviceMemory Renderer::allocateMemory(const vk::MemoryRequirements& requirements, vk::MemoryPropertyFlags required, vk::MemoryPropertyFlags preferred) {
+    vk::MemoryAllocateInfo info = {};
+    info.memoryTypeIndex = findMemoryType(requirements.memoryTypeBits, required, preferred);
+    info.allocationSize = requirements.size;
+
+    return vk::DeviceMemory(*m_device, info);
+}
+
 void Renderer::render(float dt) {
     uint32_t index = acquireImage();
     vk::Fence& fence = m_fences[index];
@@ -153,7 +184,7 @@ void Renderer::createSurface() {
 }
 
 Renderer::QueueFamilyIndices Renderer::findQueueFamilies(const vk::PhysicalDevice& device) {
-    QueueFamilyIndices indices;
+    QueueFamilyIndices indices = {};
 
     for (uint32_t i = 0; i < device.queueFamilies().size(); i++) {
         const auto& queueFamily = device.queueFamilies()[i];
@@ -164,6 +195,10 @@ Renderer::QueueFamilyIndices Renderer::findQueueFamilies(const vk::PhysicalDevic
 
         if (m_surface->supported(device, i)) {
             indices.present = i;
+        }
+
+        if ((queueFamily.queueFlags & vk::QueueFlags::Transfer) == vk::QueueFlags::Transfer && (queueFamily.queueFlags & vk::QueueFlags::Graphics) == vk::QueueFlags::Graphics) {
+            indices.transfer = i;
         }
 
         if (indices.isComplete()) {
@@ -209,6 +244,10 @@ void Renderer::createDevice() {
     }
 
     QueueFamilyIndices indices = findQueueFamilies(*m_physicalDevice);
+    if (indices.transfer.has_value()) {
+        indices.transfer = indices.graphics;
+    }
+
     std::unordered_set<uint32_t> uniqueIndices = { indices.graphics.value(), indices.present.value() };
     std::vector<vk::DeviceQueueCreateInfo> queueInfos;
 
@@ -229,8 +268,10 @@ void Renderer::createDevice() {
 
     m_graphicsQueueIndex = indices.graphics.value();
     m_presentQueueIndex = indices.present.value();
+    m_transferQueueIndex = indices.transfer.value();
     m_graphicsQueue = &m_device->getQueue(indices.graphics.value(), 0);
     m_presentQueue = &m_device->getQueue(indices.present.value(), 0);
+    m_transferQueue = &m_device->getQueue(indices.transfer.value(), 0);
 }
 
 vk::SurfaceFormat Renderer::chooseFormat() {
