@@ -6,16 +6,6 @@
 #define VERTEX_BUFFER_SIZE (64 * 1024 * 1024)
 #define INDEX_BUFFER_SIZE (64 * 1024 * 1024)
 
-Vertex vertices[] = {
-    { {  000.0f,  100.0f, 0.0f } },
-    { {  100.0f, -100.0f, 0.0f } },
-    { { -100.0f, -100.0f, 0.0f } }
-};
-
-uint32_t indices[] = {
-    0, 1, 2
-};
-
 Line::Line(Renderer& renderer) {
     m_renderer = &renderer;
     m_device = &renderer.device();
@@ -28,9 +18,6 @@ Line::Line(Renderer& renderer) {
     writeDescriptor();
     createPipelineLayout();
     createPipeline();
-
-    transferData(sizeof(vertices), &vertices, *m_vertexBuffer, vk::AccessFlags::VertexAttributeRead, vk::PipelineStageFlags::VertexInput);
-    transferData(sizeof(indices), &indices, *m_indexBuffer, vk::AccessFlags::IndexRead, vk::PipelineStageFlags::VertexInput);
 }
 
 void Line::updateUniformBuffer() {
@@ -40,9 +27,15 @@ void Line::updateUniformBuffer() {
     UniformBuffer& uniform = *m_uniformBufferPtr;
     uniform.projection = glm::orthoRH_ZO<float>(-width, width, -height, height, 0, 1);
     uniform.projection[1][1] *= -1;
+    uniform.colorWidth = glm::vec4(1, 0, 0, 1);
+}
+
+void Line::addPoint(float x, float y) {
+    m_points.push_back({ x, y, 0 });
 }
 
 void Line::render(float dt, vk::CommandBuffer& commandBuffer) {
+    createMesh();
     updateUniformBuffer();
     handleTransfers(commandBuffer);
 
@@ -73,9 +66,49 @@ void Line::render(float dt, vk::CommandBuffer& commandBuffer) {
     commandBuffer.bindIndexBuffer(*m_indexBuffer, 0, vk::IndexType::Uint32);
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::Graphics, *m_pipelineLayout, 0, { *m_descriptorSet }, nullptr);
 
-    commandBuffer.drawIndexed(3, 1, 0, 0, 0);
+    if (m_indices.size() > 0) {
+        commandBuffer.drawIndexed(static_cast<uint32_t>(m_indices.size()), 1, 0, 0, 0);
+    }
 
     commandBuffer.endRenderPass();
+}
+
+void Line::createMesh() {
+    m_vertices.clear();
+    m_indices.clear();
+    uint32_t index = 0;
+
+    float size = std::min<float>(m_renderer->width(), m_renderer->height()) * 0.5f;
+
+    if (m_points.size() == 0) return;
+
+    for (size_t i = 1; i < m_points.size(); i++) {
+        glm::vec3 lastPoint = m_points[i - 1] * size;
+        glm::vec3 currentPoint = m_points[i] * size;
+
+        glm::vec3 diff = currentPoint - lastPoint;
+
+        glm::vec3 normal = glm::cross(glm::normalize(diff), glm::vec3(0, 0, 1));
+
+        m_vertices.push_back({ lastPoint, normal });
+        m_vertices.push_back({ lastPoint, -normal });
+        m_vertices.push_back({ currentPoint, normal });
+        m_vertices.push_back({ currentPoint, -normal });
+
+        m_indices.push_back(index + 0);
+        m_indices.push_back(index + 1);
+        m_indices.push_back(index + 2);
+        m_indices.push_back(index + 2);
+        m_indices.push_back(index + 1);
+        m_indices.push_back(index + 3);
+
+        index += 4;
+    }
+
+    transferData(m_vertices.size() * sizeof(Vertex), m_vertices.data(), *m_vertexBuffer, vk::AccessFlags::VertexAttributeRead, vk::PipelineStageFlags::VertexInput);
+    transferData(m_indices.size() * sizeof(uint32_t), m_indices.data(), *m_indexBuffer, vk::AccessFlags::IndexRead, vk::PipelineStageFlags::VertexInput);
+
+    m_points.clear();
 }
 
 std::vector<char> Line::loadFile(const std::string& filename) {

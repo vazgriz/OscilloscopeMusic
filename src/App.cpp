@@ -52,5 +52,9 @@ void App::readAudioFrames(float dt) {
         ma_pcm_rb_commit_read(&m_ringBuffer, framesToRead, readPtr);
         if (framesToRead == 0) break;
         readRemaining -= framesToRead;
+
+        for (uint32_t i = 0; i < framesToRead; i++) {
+            m_line->addPoint(buffer[i].sample[0], buffer[i].sample[1]);
+        }
     }
 }

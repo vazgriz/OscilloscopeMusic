@@ -22,6 +22,8 @@ public:
     Line(Line&& other) = default;
     Line& operator = (Line&& other) = default;
 
+    void addPoint(float x, float y);
+
     void render(float dt, vk::CommandBuffer& commandBuffer) override;
 
 private:
@@ -31,6 +33,10 @@ private:
         vk::BufferMemoryBarrier barrier;
         vk::PipelineStageFlags stage;
     };
+
+    std::vector<glm::vec3> m_points;
+    std::vector<Vertex> m_vertices;
+    std::vector<uint32_t> m_indices;
 
     Renderer* m_renderer;
     vk::Device* m_device;
@@ -67,6 +73,7 @@ private:
     void handleTransfers(vk::CommandBuffer& commandBuffer);
 
     void updateUniformBuffer();
+    void createMesh();
 
     void createDescriptorPool();
     void createDescriptorSetLayout();
