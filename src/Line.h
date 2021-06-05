@@ -1,6 +1,18 @@
 #pragma once
 #include <VulkanWrapper/VulkanWrapper.h>
 #include "Renderer.h"
+#include <glm/glm.hpp>
+
+struct UniformBuffer {
+    glm::mat4 projection;
+    glm::vec4 colorWidth;
+    glm::vec2 screenSize;
+};
+
+struct Vertex {
+    glm::vec3 position;
+    glm::vec3 normal;
+};
 
 class Line : public IRenderer {
 public:
@@ -13,8 +25,11 @@ public:
     void render(float dt, vk::CommandBuffer& commandBuffer) override;
 
 private:
-    struct UniformBuffer {
-        float color[4];
+    struct Transfer {
+        vk::Buffer* buffer;
+        vk::BufferCopy copy;
+        vk::BufferMemoryBarrier barrier;
+        vk::PipelineStageFlags stage;
     };
 
     Renderer* m_renderer;
@@ -36,8 +51,15 @@ private:
     std::vector<char> loadFile(const std::string& filename);
     vk::ShaderModule loadShader(const std::string& filename);
 
+    char* m_stagingPtr;
+    size_t m_stagingOffset = 0;
+    std::vector<Transfer> m_transfers;
+
     vk::DeviceMemory allocateMemory(vk::Buffer& buffer, vk::MemoryPropertyFlags required, vk::MemoryPropertyFlags preferred);
     void createBuffers();
+
+    void transferData(size_t size, void* data, vk::Buffer& destinationBuffer, vk::AccessFlags destinationAccess, vk::PipelineStageFlags stage);
+    void handleTransfers(vk::CommandBuffer& commandBuffer);
 
     void createPipelineLayout();
     void createPipeline();

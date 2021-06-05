@@ -14,7 +14,6 @@ class Renderer {
     struct QueueFamilyIndices {
         std::optional<uint32_t> graphics;
         std::optional<uint32_t> present;
-        std::optional<uint32_t> transfer;
 
         bool isComplete();
     };
@@ -32,6 +31,8 @@ public:
     uint32_t height() const { return m_height; }
     vk::Device& device() const { return *m_device; }
     vk::RenderPass& renderPass() const { return *m_renderPass; }
+    const std::vector<vk::Framebuffer>& framebuffers() const { return m_framebuffers; }
+    uint32_t index() const { return m_index; }
 
     vk::DeviceMemory allocateMemory(const vk::MemoryRequirements& requriements, vk::MemoryPropertyFlags required, vk::MemoryPropertyFlags preferred);
 
@@ -43,6 +44,7 @@ private:
     GLFWwindow* m_window;
     uint32_t m_width;
     uint32_t m_height;
+    uint32_t m_index;
 
     uint32_t m_graphicsQueueIndex;
     uint32_t m_presentQueueIndex;

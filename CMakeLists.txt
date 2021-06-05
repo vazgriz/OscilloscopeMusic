@@ -10,6 +10,7 @@ set(MINIAUDIO_PATH "" CACHE PATH "Path to miniaudio 0.10.35 root")
 set(VULKAN_WRAPPER_INCLUDE "" CACHE PATH "Path to Vulkan Wrapper (VKW) include folder")
 set(VULKAN_WRAPPER_LIB "" CACHE FILEPATH "Path to VKW binary")
 set(GLSL_COMPILER "" CACHE STRING "Command to execute Vulkan GLSL compiler")
+set(GLM_INCLUDE "" CACHE PATH "Path to GLM include folder")
 
 add_executable("OscilloscopeMusic"
     "src/main.cpp"
@@ -31,6 +32,7 @@ target_include_directories("OscilloscopeMusic"
     PUBLIC ${VULKAN_INCLUDE}
     PUBLIC ${MINIAUDIO_PATH}
     PUBLIC ${VULKAN_WRAPPER_INCLUDE}
+    PUBLIC ${GLM_INCLUDE}
 )
 
 target_link_libraries("OscilloscopeMusic"

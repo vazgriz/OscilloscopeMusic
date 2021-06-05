@@ -59,19 +59,10 @@ vk::CommandBuffer& Renderer::recordCommandBuffer(float dt, uint32_t index, vk::F
     vk::CommandBufferBeginInfo beginInfo = {};
     commandBuffer.begin(beginInfo);
 
-    vk::RenderPassBeginInfo renderPassInfo = {};
-    renderPassInfo.renderPass = m_renderPass.get();
-    renderPassInfo.framebuffer = &m_framebuffers[index];
-    renderPassInfo.clearValues = { { } };
-    renderPassInfo.renderArea = { {}, { m_width, m_height } };
-
-    commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::Inline);
-
     for (auto renderer : m_renderers) {
         renderer->render(dt, commandBuffer);
     }
 
-    commandBuffer.endRenderPass();
     commandBuffer.end();
 
     return commandBuffer;
@@ -94,6 +85,14 @@ void Renderer::presentImage(uint32_t index) {
     info.waitSemaphores = { *m_renderSemaphore };
 
     m_presentQueue->present(info);
+}
+
+void Renderer::render(float dt) {
+    m_index = acquireImage();
+    vk::Fence& fence = m_fences[m_index];
+    vk::CommandBuffer& commandBuffer = recordCommandBuffer(dt, m_index, fence);
+    submitCommandBuffer(commandBuffer, fence);
+    presentImage(m_index);
 }
 
 uint32_t Renderer::findMemoryType(uint32_t requirements, vk::MemoryPropertyFlags required, vk::MemoryPropertyFlags preferred) {
@@ -125,14 +124,6 @@ vk::DeviceMemory Renderer::allocateMemory(const vk::MemoryRequirements& requirem
     info.allocationSize = requirements.size;
 
     return vk::DeviceMemory(*m_device, info);
-}
-
-void Renderer::render(float dt) {
-    uint32_t index = acquireImage();
-    vk::Fence& fence = m_fences[index];
-    vk::CommandBuffer& commandBuffer = recordCommandBuffer(dt, index, fence);
-    submitCommandBuffer(commandBuffer, fence);
-    presentImage(index);
 }
 
 std::vector<std::string> Renderer::getRequiredExtensions(GLFWwindow* window) {
@@ -197,10 +188,6 @@ Renderer::QueueFamilyIndices Renderer::findQueueFamilies(const vk::PhysicalDevic
             indices.present = i;
         }
 
-        if ((queueFamily.queueFlags & vk::QueueFlags::Transfer) == vk::QueueFlags::Transfer && (queueFamily.queueFlags & vk::QueueFlags::Graphics) == vk::QueueFlags::Graphics) {
-            indices.transfer = i;
-        }
-
         if (indices.isComplete()) {
             break;
         }
@@ -244,10 +231,6 @@ void Renderer::createDevice() {
     }
 
     QueueFamilyIndices indices = findQueueFamilies(*m_physicalDevice);
-    if (indices.transfer.has_value()) {
-        indices.transfer = indices.graphics;
-    }
-
     std::unordered_set<uint32_t> uniqueIndices = { indices.graphics.value(), indices.present.value() };
     std::vector<vk::DeviceQueueCreateInfo> queueInfos;
 
@@ -268,10 +251,10 @@ void Renderer::createDevice() {
 
     m_graphicsQueueIndex = indices.graphics.value();
     m_presentQueueIndex = indices.present.value();
-    m_transferQueueIndex = indices.transfer.value();
+    m_transferQueueIndex = indices.graphics.value();
     m_graphicsQueue = &m_device->getQueue(indices.graphics.value(), 0);
     m_presentQueue = &m_device->getQueue(indices.present.value(), 0);
-    m_transferQueue = &m_device->getQueue(indices.transfer.value(), 0);
+    m_transferQueue = &m_device->getQueue(indices.graphics.value(), 0);
 }
 
 vk::SurfaceFormat Renderer::chooseFormat() {
