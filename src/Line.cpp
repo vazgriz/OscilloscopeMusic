@@ -21,13 +21,14 @@ Line::Line(Renderer& renderer) {
 }
 
 void Line::updateUniformBuffer() {
-    float width = static_cast<float>(m_renderer->width()) / 2;
-    float height = static_cast<float>(m_renderer->height()) / 2;
+    float width = static_cast<float>(m_renderer->width());
+    float height = static_cast<float>(m_renderer->height());
 
     UniformBuffer& uniform = *m_uniformBufferPtr;
-    uniform.projection = glm::orthoRH_ZO<float>(-width, width, -height, height, 0, 1);
+    uniform.projection = glm::orthoRH_ZO<float>(-width / 2, width / 2, -height / 2, height / 2, 0, 1);
     uniform.projection[1][1] *= -1;
-    uniform.colorWidth = glm::vec4(1, 0, 0, 1);
+    uniform.colorWidth = glm::vec4(1, 0, 0, 2);
+    uniform.screenSize = { width, height };
 }
 
 void Line::addPoint(float x, float y) {
@@ -317,6 +318,13 @@ void Line::createPipeline() {
                                   | vk::ColorComponentFlags::G
                                   | vk::ColorComponentFlags::B
                                   | vk::ColorComponentFlags::A;
+    colorBlendAttachmentInfo.blendEnable = true;
+    colorBlendAttachmentInfo.colorBlendOp = vk::BlendOp::Add;
+    colorBlendAttachmentInfo.alphaBlendOp = vk::BlendOp::Add;
+    colorBlendAttachmentInfo.srcColorBlendFactor = vk::BlendFactor::SrcAlpha;
+    colorBlendAttachmentInfo.dstColorBlendFactor = vk::BlendFactor::OneMinusSrcAlpha;
+    colorBlendAttachmentInfo.srcAlphaBlendFactor = vk::BlendFactor::One;
+    colorBlendAttachmentInfo.dstAlphaBlendFactor = vk::BlendFactor::Zero;
 
     vk::PipelineColorBlendStateCreateInfo colorBlendInfo = {};
     colorBlendInfo.attachments = { colorBlendAttachmentInfo };
