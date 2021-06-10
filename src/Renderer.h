@@ -26,6 +26,7 @@ public:
     Renderer& operator = (Renderer&& other) = default;
 
     void waitIdle();
+    void resize(uint32_t width, uint32_t height);
 
     uint32_t width() const { return m_width; }
     uint32_t height() const { return m_height; }

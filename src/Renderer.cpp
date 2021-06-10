@@ -39,6 +39,13 @@ void Renderer::waitIdle() {
     m_device->waitIdle();
 }
 
+void Renderer::resize(uint32_t width, uint32_t height) {
+    m_device->waitIdle();
+    m_width = width;
+    m_height = height;
+    recreateSwapchain();
+}
+
 void Renderer::addRenderer(IRenderer& renderer) {
     m_renderers.push_back(&renderer);
 }
@@ -361,6 +368,8 @@ void Renderer::createRenderPass() {
 }
 
 void Renderer::createFramebuffers() {
+    m_framebuffers.clear();
+
     for (auto& imageView : m_imageViews) {
         vk::FramebufferCreateInfo info = {};
         info.attachments = { imageView };

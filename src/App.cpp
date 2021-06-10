@@ -2,6 +2,8 @@
 #include <GLFW/glfw3.h>
 
 App::App(GLFWwindow* window, const char* filename) {
+    glfwSetWindowUserPointer(window, this);
+
     auto result = ma_pcm_rb_init(ma_format_f32, 2, SAMPLE_RATE / 60 * 2, nullptr, nullptr, &m_ringBuffer);
 
     m_audio = std::make_unique<Audio>(filename, *this);
@@ -9,6 +11,8 @@ App::App(GLFWwindow* window, const char* filename) {
     m_line = std::make_unique<Line>(*m_renderer);
 
     m_renderer->addRenderer(*m_line);
+
+    glfwSetWindowSizeCallback(window, &App::handleWindowResize);
 }
 
 void App::waitIdle() {
@@ -57,4 +61,9 @@ void App::readAudioFrames(float dt) {
             m_line->addPoint(buffer[i].sample[0], buffer[i].sample[1]);
         }
     }
+}
+
+void App::handleWindowResize(GLFWwindow* window, int width, int height) {
+    App& app = *static_cast<App*>(glfwGetWindowUserPointer(window));
+    app.m_renderer->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 }

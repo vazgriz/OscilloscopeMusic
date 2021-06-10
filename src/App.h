@@ -29,4 +29,6 @@ private:
 
     uint32_t calculateFramesToRead(float dt);
     void readAudioFrames(float dt);
+
+    static void handleWindowResize(GLFWwindow* window, int width, int height);
 };
