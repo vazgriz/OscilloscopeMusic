@@ -5,6 +5,9 @@
 #define STAGING_BUFFER_SIZE (64 * 1024 * 1024)
 #define VERTEX_BUFFER_SIZE (64 * 1024 * 1024)
 #define INDEX_BUFFER_SIZE (64 * 1024 * 1024)
+#define LINE_WIDTH 2.0f
+#define LINE_WIDTH_FACTOR_THRESHOLD 0.1f
+#define LINE_LENGTH_THRESHOLD 10.0f
 
 Line::Line(Renderer& renderer) {
     m_renderer = &renderer;
@@ -27,7 +30,7 @@ void Line::updateUniformBuffer() {
     UniformBuffer& uniform = *m_uniformBufferPtr;
     uniform.projection = glm::orthoRH_ZO<float>(-width / 2, width / 2, -height / 2, height / 2, 0, 1);
     uniform.projection[1][1] *= -1;
-    uniform.colorWidth = glm::vec4(1, 0, 0, 2);
+    uniform.colorWidth = { 1, 0, 0, LINE_WIDTH };
     uniform.screenSize = { width, height };
 }
 
@@ -90,20 +93,25 @@ void Line::createMesh() {
         glm::vec3 diff = currentPoint - lastPoint;
 
         glm::vec3 normal = glm::cross(glm::normalize(diff), glm::vec3(0, 0, 1));
+        float length = glm::length(diff);
 
-        m_vertices.push_back({ lastPoint, normal });
-        m_vertices.push_back({ lastPoint, -normal });
-        m_vertices.push_back({ currentPoint, normal });
-        m_vertices.push_back({ currentPoint, -normal });
+        float widthFactor = std::clamp<float>(LINE_LENGTH_THRESHOLD / length, 0.0f, 1.0f);
 
-        m_indices.push_back(index + 0);
-        m_indices.push_back(index + 1);
-        m_indices.push_back(index + 2);
-        m_indices.push_back(index + 2);
-        m_indices.push_back(index + 1);
-        m_indices.push_back(index + 3);
+        if (widthFactor > LINE_WIDTH_FACTOR_THRESHOLD) {
+            m_vertices.push_back({ { lastPoint.x, lastPoint.y, lastPoint.z, widthFactor }, normal });
+            m_vertices.push_back({ { lastPoint.x, lastPoint.y, lastPoint.z, widthFactor }, -normal });
+            m_vertices.push_back({ { currentPoint.x, currentPoint.y, currentPoint.z, widthFactor }, normal });
+            m_vertices.push_back({ { currentPoint.x, currentPoint.y, currentPoint.z, widthFactor }, -normal });
 
-        index += 4;
+            m_indices.push_back(index + 0);
+            m_indices.push_back(index + 1);
+            m_indices.push_back(index + 2);
+            m_indices.push_back(index + 2);
+            m_indices.push_back(index + 1);
+            m_indices.push_back(index + 3);
+
+            index += 4;
+        }
     }
 
     transferData(m_vertices.size() * sizeof(Vertex), m_vertices.data(), *m_vertexBuffer, vk::AccessFlags::VertexAttributeRead, vk::PipelineStageFlags::VertexInput);
@@ -290,8 +298,8 @@ void Line::createPipeline() {
 
     vk::PipelineVertexInputStateCreateInfo vertexInputInfo = {};
     vertexInputInfo.vertexAttributeDescriptions = {
-        { 0, 0, vk::Format::R32G32B32_Sfloat, 0 },
-        { 1, 0, vk::Format::R32G32B32_Sfloat, sizeof(glm::vec3) }
+        { 0, 0, vk::Format::R32G32B32A32_Sfloat, 0 },
+        { 1, 0, vk::Format::R32G32B32_Sfloat, sizeof(glm::vec4) }
     };
     vertexInputInfo.vertexBindingDescriptions = {
         { 0, sizeof(Vertex), vk::VertexInputRate::Vertex }

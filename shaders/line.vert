@@ -1,10 +1,11 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(location = 0) in vec3 inPos;
+layout(location = 0) in vec4 inPosWidth;
 layout(location = 1) in vec3 inNormal;
 
 layout(location = 0) out vec2 fragLineCenter;
+layout(location = 1) out float fragWidthFactor;
 
 layout(binding = 0) uniform UBO {
     mat4 proj;
@@ -13,7 +14,8 @@ layout(binding = 0) uniform UBO {
 } ubo;
 
 void main() {
-    gl_Position = ubo.proj * vec4(inPos + inNormal * ubo.colorWidth.w, 1.0);
-    vec2 clip = (ubo.proj * vec4(inPos.xy, 0.0, 1.0)).xy;
+    gl_Position = ubo.proj * vec4(inPosWidth.xyz + inNormal * ubo.colorWidth.w * inPosWidth.w, 1.0);
+    vec2 clip = (ubo.proj * vec4(inPosWidth.xy, 0.0, 1.0)).xy;
     fragLineCenter = ((clip + vec2(1.0, 1.0)) / 2.0) * ubo.screenSize;
+    fragWidthFactor = inPosWidth.w;
 }
