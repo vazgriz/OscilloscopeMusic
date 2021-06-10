@@ -33,6 +33,7 @@ Audio::~Audio() {
 void Audio::audioCallback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount) {
     Audio* audio = static_cast<Audio*>(pDevice->pUserData);
     if (audio == NULL) return;
+    if (audio->m_app->isPaused()) return;
 
     ma_decoder* pDecoder = &audio->m_decoder;
 

@@ -14,6 +14,8 @@ Line::Line(Renderer& renderer) {
     m_device = &renderer.device();
     m_renderPass = &renderer.renderPass();
 
+    m_dirty = false;
+
     createBuffers();
     createDescriptorPool();
     createDescriptorSetLayout();
@@ -36,6 +38,7 @@ void Line::updateUniformBuffer() {
 
 void Line::addPoint(float x, float y) {
     m_points.push_back({ x, y, 0 });
+    m_dirty = true;
 }
 
 void Line::render(float dt, vk::CommandBuffer& commandBuffer) {
@@ -78,13 +81,13 @@ void Line::render(float dt, vk::CommandBuffer& commandBuffer) {
 }
 
 void Line::createMesh() {
+    if (!m_dirty) return;
     m_vertices.clear();
     m_indices.clear();
     uint32_t index = 0;
+    if (m_points.size() == 0) return;
 
     float size = std::min<float>(m_renderer->width(), m_renderer->height()) * 0.5f;
-
-    if (m_points.size() == 0) return;
 
     for (size_t i = 1; i < m_points.size(); i++) {
         glm::vec3 lastPoint = m_points[i - 1] * size;
@@ -118,6 +121,7 @@ void Line::createMesh() {
     transferData(m_indices.size() * sizeof(uint32_t), m_indices.data(), *m_indexBuffer, vk::AccessFlags::IndexRead, vk::PipelineStageFlags::VertexInput);
 
     m_points.clear();
+    m_dirty = false;
 }
 
 std::vector<char> Line::loadFile(const std::string& filename) {

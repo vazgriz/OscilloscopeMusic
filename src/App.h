@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <atomic>
 
 #include "Audio.h"
 #include "Renderer.h"
@@ -17,6 +18,8 @@ public:
 
     void waitIdle();
 
+    bool isPaused() const { return m_paused; }
+    bool isIconified() const { return m_iconified; }
     void update(float dt);
 
     void addAudioSamples(uint32_t frameCount, AudioFrame* frames);
@@ -26,9 +29,13 @@ private:
     std::unique_ptr<Renderer> m_renderer;
     std::unique_ptr<Line> m_line;
     ma_pcm_rb m_ringBuffer;
+    std::atomic<bool> m_paused;
+    bool m_iconified;
 
     uint32_t calculateFramesToRead(float dt);
     void readAudioFrames(float dt);
 
     static void handleWindowResize(GLFWwindow* window, int width, int height);
+    static void handleMouseButton(GLFWwindow* window, int button, int action, int mods);
+    static void handleIconify(GLFWwindow* window, int iconified);
 };

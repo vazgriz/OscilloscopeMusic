@@ -34,6 +34,7 @@ private:
         vk::PipelineStageFlags stage;
     };
 
+    bool m_dirty;
     std::vector<glm::vec3> m_points;
     std::vector<Vertex> m_vertices;
     std::vector<uint32_t> m_indices;

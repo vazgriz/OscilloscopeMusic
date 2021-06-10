@@ -45,17 +45,26 @@ int main(int argc, const char** argv) {
                 lastTime = now;
                 frameCount++;
 
-                if (elapsedFPS > 0.25f) {
-                    std::stringstream stream;
-                    stream << "Oscilloscope Music (" << ((int)round(frameCount / elapsedFPS)) << " fps)";
-                    glfwSetWindowTitle(window, stream.str().c_str());
+                if (app.isPaused()) {
+                    std::string text = "Oscilloscope Music [PAUSED]";
+                    glfwSetWindowTitle(window, text.c_str());
+                } else {
+                    if (elapsedFPS > 0.25f) {
+                        std::stringstream stream;
+                        stream << "Oscilloscope Music (" << ((int)round(frameCount / elapsedFPS)) << " fps)";
+                        glfwSetWindowTitle(window, stream.str().c_str());
 
-                    frameCount = 0;
-                    lastFPSTime = now;
+                        frameCount = 0;
+                        lastFPSTime = now;
+                    }
                 }
 
-                glfwPollEvents();
-                app.update(elapsed);
+                if (app.isIconified()) {
+                    glfwWaitEvents();
+                } else {
+                    glfwPollEvents();
+                    app.update(elapsed);
+                }
             }
 
             app.waitIdle();

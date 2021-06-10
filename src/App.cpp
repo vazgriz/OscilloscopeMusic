@@ -2,6 +2,9 @@
 #include <GLFW/glfw3.h>
 
 App::App(GLFWwindow* window, const char* filename) {
+    m_paused = false;
+    m_iconified = false;
+
     glfwSetWindowUserPointer(window, this);
 
     auto result = ma_pcm_rb_init(ma_format_f32, 2, SAMPLE_RATE / 60 * 2, nullptr, nullptr, &m_ringBuffer);
@@ -13,6 +16,8 @@ App::App(GLFWwindow* window, const char* filename) {
     m_renderer->addRenderer(*m_line);
 
     glfwSetWindowSizeCallback(window, &App::handleWindowResize);
+    glfwSetMouseButtonCallback(window, &App::handleMouseButton);
+    glfwSetWindowIconifyCallback(window, &App::handleIconify);
 }
 
 void App::waitIdle() {
@@ -20,7 +25,10 @@ void App::waitIdle() {
 }
 
 void App::update(float dt) {
-    readAudioFrames(dt);
+    if (!isPaused()) {
+        readAudioFrames(dt);
+    }
+
     m_renderer->render(dt);
 }
 
@@ -65,5 +73,22 @@ void App::readAudioFrames(float dt) {
 
 void App::handleWindowResize(GLFWwindow* window, int width, int height) {
     App& app = *static_cast<App*>(glfwGetWindowUserPointer(window));
-    app.m_renderer->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+
+    if (width != 0 && height != 0) {
+        app.m_renderer->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+    }
+}
+
+void App::handleMouseButton(GLFWwindow* window, int button, int action, int mods) {
+    App& app = *static_cast<App*>(glfwGetWindowUserPointer(window));
+
+    if (button == GLFW_MOUSE_BUTTON_1 && action == GLFW_PRESS) {
+        app.m_paused = !app.m_paused;
+    }
+}
+
+void App::handleIconify(GLFWwindow* window, int iconified) {
+    App& app = *static_cast<App*>(glfwGetWindowUserPointer(window));
+    app.m_paused = iconified == 1;
+    app.m_iconified = iconified == 1;
 }
