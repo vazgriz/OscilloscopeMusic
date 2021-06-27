@@ -10,13 +10,13 @@ struct UniformBuffer {
 };
 
 struct Vertex {
-    glm::vec4 positionPower;
-    glm::vec3 normal;
+    glm::vec4 positionAlpha;
+    glm::vec4 normalWidth;
 };
 
 class Line : public IRenderer {
 public:
-    Line(Renderer& renderer);
+    Line(size_t bufferSize, size_t persistence, Renderer& renderer);
     Line(const Line& other) = delete;
     Line& operator = (const Line& other) = delete;
     Line(Line&& other) = default;
@@ -34,6 +34,8 @@ private:
         vk::PipelineStageFlags stage;
     };
 
+    size_t m_bufferSize;
+    size_t m_persistance;
     bool m_dirty;
     std::vector<glm::vec3> m_points;
     std::vector<Vertex> m_vertices;

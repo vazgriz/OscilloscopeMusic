@@ -5,6 +5,7 @@
 #include "Audio.h"
 #include "Renderer.h"
 #include "Line.h"
+#include "AudioBuffer.h"
 
 struct GLFWwindow;
 
@@ -28,7 +29,9 @@ private:
     std::unique_ptr<Audio> m_audio;
     std::unique_ptr<Renderer> m_renderer;
     std::unique_ptr<Line> m_line;
-    ma_pcm_rb m_ringBuffer;
+    ma_pcm_rb m_rawBuffer;
+    AudioBuffer m_audioBuffer;
+    size_t m_persistentFrame;
     std::atomic<bool> m_paused;
     bool m_iconified;
 

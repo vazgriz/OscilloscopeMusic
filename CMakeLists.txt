@@ -23,6 +23,8 @@ add_executable("OscilloscopeMusic"
     "src/Renderer.cpp"
     "src/Line.h"
     "src/Line.cpp"
+    "src/AudioBuffer.h"
+    "src/AudioBuffer.cpp"
 )
 
 target_compile_features("OscilloscopeMusic" PRIVATE cxx_std_17)

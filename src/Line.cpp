@@ -5,15 +5,18 @@
 #define STAGING_BUFFER_SIZE (64 * 1024 * 1024)
 #define VERTEX_BUFFER_SIZE (64 * 1024 * 1024)
 #define INDEX_BUFFER_SIZE (64 * 1024 * 1024)
+
 #define LINE_WIDTH 2.0f
 #define LINE_WIDTH_FACTOR_THRESHOLD 0.1f
 #define LINE_LENGTH_THRESHOLD 10.0f
 
-Line::Line(Renderer& renderer) {
+Line::Line(size_t bufferSize, size_t persistence, Renderer& renderer) {
     m_renderer = &renderer;
     m_device = &renderer.device();
     m_renderPass = &renderer.renderPass();
 
+    m_persistance = persistence;
+    m_bufferSize = bufferSize;
     m_dirty = false;
 
     createBuffers();
@@ -89,6 +92,8 @@ void Line::createMesh() {
 
     float size = std::min<float>(m_renderer->width(), m_renderer->height()) * 0.5f;
 
+    size_t brightnessFloor = m_bufferSize - m_points.size();
+
     for (size_t i = 1; i < m_points.size(); i++) {
         glm::vec3 lastPoint = m_points[i - 1] * size;
         glm::vec3 currentPoint = m_points[i] * size;
@@ -101,10 +106,16 @@ void Line::createMesh() {
         float widthFactor = std::clamp<float>(LINE_LENGTH_THRESHOLD / length, 0.0f, 1.0f);
 
         if (widthFactor > LINE_WIDTH_FACTOR_THRESHOLD) {
-            m_vertices.push_back({ { lastPoint.x, lastPoint.y, lastPoint.z, widthFactor }, normal });
-            m_vertices.push_back({ { lastPoint.x, lastPoint.y, lastPoint.z, widthFactor }, -normal });
-            m_vertices.push_back({ { currentPoint.x, currentPoint.y, currentPoint.z, widthFactor }, normal });
-            m_vertices.push_back({ { currentPoint.x, currentPoint.y, currentPoint.z, widthFactor }, -normal });
+            float brightness = (brightnessFloor + i) / static_cast<float>(m_bufferSize);
+            brightness = pow(brightness, m_persistance);
+            glm::vec4 posBrightnessLast = { lastPoint.x, lastPoint.y, lastPoint.z, brightness };
+            glm::vec4 posBrightnessCurrent = { currentPoint.x, currentPoint.y, currentPoint.z, brightness };
+            glm::vec4 normalWidth = { normal.x, normal.y, normal.z, widthFactor };
+
+            m_vertices.push_back({ posBrightnessLast, normalWidth });
+            m_vertices.push_back({ posBrightnessLast, -normalWidth });
+            m_vertices.push_back({ posBrightnessCurrent, normalWidth });
+            m_vertices.push_back({ posBrightnessCurrent, -normalWidth });
 
             m_indices.push_back(index + 0);
             m_indices.push_back(index + 1);

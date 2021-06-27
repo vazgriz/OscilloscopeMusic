@@ -1,17 +1,21 @@
 #include "App.h"
 #include <GLFW/glfw3.h>
 
-App::App(GLFWwindow* window, const char* filename) {
+#define SAMPLES_PER_FRAME (SAMPLE_RATE / 60)
+#define PERSISTENCE 4
+
+App::App(GLFWwindow* window, const char* filename) : m_audioBuffer(SAMPLES_PER_FRAME * PERSISTENCE) {
     m_paused = false;
     m_iconified = false;
+    m_persistentFrame = 0;
 
     glfwSetWindowUserPointer(window, this);
 
-    auto result = ma_pcm_rb_init(ma_format_f32, 2, SAMPLE_RATE / 60 * 2, nullptr, nullptr, &m_ringBuffer);
+    auto result = ma_pcm_rb_init(ma_format_f32, 2, SAMPLES_PER_FRAME * 2, nullptr, nullptr, &m_rawBuffer);
 
     m_audio = std::make_unique<Audio>(filename, *this);
     m_renderer = std::make_unique<Renderer>(window);
-    m_line = std::make_unique<Line>(*m_renderer);
+    m_line = std::make_unique<Line>(m_audioBuffer.capacity(), PERSISTENCE, *m_renderer);
 
     m_renderer->addRenderer(*m_line);
 
@@ -38,9 +42,9 @@ void App::addAudioSamples(uint32_t frameCount, AudioFrame* frames) {
     while (writeRemaining > 0) {
         void* writePtr;
         ma_uint32 framesToWrite = writeRemaining;
-        ma_pcm_rb_acquire_write(&m_ringBuffer, &framesToWrite, &writePtr);
+        ma_pcm_rb_acquire_write(&m_rawBuffer, &framesToWrite, &writePtr);
         memcpy(writePtr, &frames[frameCount - writeRemaining], sizeof(AudioFrame) * framesToWrite);
-        ma_pcm_rb_commit_write(&m_ringBuffer, framesToWrite, writePtr);
+        ma_pcm_rb_commit_write(&m_rawBuffer, framesToWrite, writePtr);
         if (framesToWrite == 0) break;
         writeRemaining -= framesToWrite;
     }
@@ -59,15 +63,24 @@ void App::readAudioFrames(float dt) {
     while (readRemaining > 0) {
         void* readPtr;
         ma_uint32 framesToRead = std::min<uint32_t>(readRemaining, 512);
-        ma_pcm_rb_acquire_read(&m_ringBuffer, &framesToRead, &readPtr);
+        ma_pcm_rb_acquire_read(&m_rawBuffer, &framesToRead, &readPtr);
         memcpy(&buffer, readPtr, sizeof(AudioFrame) * framesToRead);
-        ma_pcm_rb_commit_read(&m_ringBuffer, framesToRead, readPtr);
+        ma_pcm_rb_commit_read(&m_rawBuffer, framesToRead, readPtr);
         if (framesToRead == 0) break;
         readRemaining -= framesToRead;
 
-        for (uint32_t i = 0; i < framesToRead; i++) {
-            m_line->addPoint(buffer[i].sample[0], buffer[i].sample[1]);
+        if (m_audioBuffer.count() + framesToRead > m_audioBuffer.capacity()) {
+            m_audioBuffer.drop((m_audioBuffer.count() + framesToRead) - m_audioBuffer.capacity());
         }
+
+        for (uint32_t i = 0; i < framesToRead; i++) {
+            m_audioBuffer.push(buffer[i]);
+        }
+    }
+
+    for (size_t i = 0; i < m_audioBuffer.count(); i++) {
+        AudioFrame frame = m_audioBuffer.get(i);
+        m_line->addPoint(frame.sample[0], frame.sample[1]);
     }
 }
 
