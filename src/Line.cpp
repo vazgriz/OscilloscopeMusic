@@ -8,7 +8,7 @@
 
 #define LINE_WIDTH 2.0f
 #define LINE_WIDTH_FACTOR_THRESHOLD 0.1f
-#define LINE_LENGTH_THRESHOLD 10.0f
+#define LINE_LENGTH_THRESHOLD 20.0f
 
 Line::Line(size_t bufferSize, size_t persistence, Renderer& renderer) {
     m_renderer = &renderer;
@@ -103,7 +103,11 @@ void Line::createMesh() {
         glm::vec3 normal = glm::cross(glm::normalize(diff), glm::vec3(0, 0, 1));
         float length = glm::length(diff);
 
-        float widthFactor = std::clamp<float>(LINE_LENGTH_THRESHOLD / length, 0.0f, 1.0f);
+        float widthFactor = 1.0f;
+        
+        if (length > 1) {
+            widthFactor = std::clamp<float>(LINE_LENGTH_THRESHOLD / length, 0.0f, 1.0f);
+        }
 
         if (widthFactor > LINE_WIDTH_FACTOR_THRESHOLD) {
             float brightness = (brightnessFloor + i) / static_cast<float>(m_bufferSize);
@@ -111,11 +115,12 @@ void Line::createMesh() {
             glm::vec4 posBrightnessLast = { lastPoint.x, lastPoint.y, lastPoint.z, brightness };
             glm::vec4 posBrightnessCurrent = { currentPoint.x, currentPoint.y, currentPoint.z, brightness };
             glm::vec4 normalWidth = { normal.x, normal.y, normal.z, widthFactor };
+            glm::vec4 negNormalWidth = { -normal.x, -normal.y, -normal.z, widthFactor };
 
             m_vertices.push_back({ posBrightnessLast, normalWidth });
-            m_vertices.push_back({ posBrightnessLast, -normalWidth });
+            m_vertices.push_back({ posBrightnessLast, negNormalWidth });
             m_vertices.push_back({ posBrightnessCurrent, normalWidth });
-            m_vertices.push_back({ posBrightnessCurrent, -normalWidth });
+            m_vertices.push_back({ posBrightnessCurrent, negNormalWidth });
 
             m_indices.push_back(index + 0);
             m_indices.push_back(index + 1);
@@ -314,7 +319,7 @@ void Line::createPipeline() {
     vk::PipelineVertexInputStateCreateInfo vertexInputInfo = {};
     vertexInputInfo.vertexAttributeDescriptions = {
         { 0, 0, vk::Format::R32G32B32A32_Sfloat, 0 },
-        { 1, 0, vk::Format::R32G32B32_Sfloat, sizeof(glm::vec4) }
+        { 1, 0, vk::Format::R32G32B32A32_Sfloat, sizeof(glm::vec4) }
     };
     vertexInputInfo.vertexBindingDescriptions = {
         { 0, sizeof(Vertex), vk::VertexInputRate::Vertex }

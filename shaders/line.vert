@@ -17,5 +17,5 @@ void main() {
     gl_Position = ubo.proj * vec4(inPosAlpha.xyz + inNormalWidth.xyz * ubo.colorWidth.w * inNormalWidth.w, 1.0);
     vec2 clip = (ubo.proj * vec4(inPosAlpha.xy, 0.0, 1.0)).xy;
     fragLineCenter = ((clip + vec2(1.0, 1.0)) / 2.0) * ubo.screenSize;
-    fragWidthAlpha = vec2(inNormalWidth.w, inPosAlpha.w);
+    fragWidthAlpha = vec2(inNormalWidth.w, inPosAlpha.w * inNormalWidth.w);
 }
