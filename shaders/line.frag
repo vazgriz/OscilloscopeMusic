@@ -13,9 +13,13 @@ layout(binding = 0) uniform UBO {
 } ubo;
 
 void main() {
+    //calculate SDF value for pixel for anti aliasing
     float dist = length(fragLineCenter - gl_FragCoord.xy);
     float width = fragWidthAlpha.x * ubo.colorWidth.w;
     float alpha = clamp(width - dist, 0, 1);
+
+    //output final color
+    //alpha depends on SDF value, length, and persistence
     float lengthFactor = clamp(fragWidthAlpha.x, 0, 1);
     outColor = vec4(ubo.colorWidth.xyz, alpha * lengthFactor * fragWidthAlpha.y);
 }

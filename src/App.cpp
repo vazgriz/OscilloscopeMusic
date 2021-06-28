@@ -37,14 +37,18 @@ void App::update(float dt) {
 }
 
 void App::addAudioSamples(uint32_t frameCount, AudioFrame* frames) {
+    //use ring buffer to get data from audio thread
     ma_uint32 writeRemaining = frameCount;
 
     while (writeRemaining > 0) {
         void* writePtr;
         ma_uint32 framesToWrite = writeRemaining;
+
         ma_pcm_rb_acquire_write(&m_rawBuffer, &framesToWrite, &writePtr);
         memcpy(writePtr, &frames[frameCount - writeRemaining], sizeof(AudioFrame) * framesToWrite);
         ma_pcm_rb_commit_write(&m_rawBuffer, framesToWrite, writePtr);
+
+        //exit early if unable to write data
         if (framesToWrite == 0) break;
         writeRemaining -= framesToWrite;
     }
@@ -55,20 +59,27 @@ uint32_t App::calculateFramesToRead(float dt) {
 }
 
 void App::readAudioFrames(float dt) {
+    //read data from ring buffer to main thread
     uint32_t frameCount = calculateFramesToRead(dt);
     ma_uint32 readRemaining = frameCount;
 
+    //buffer for reading data out of ring buffer
+    //4 KB
     AudioFrame buffer[512];
 
     while (readRemaining > 0) {
         void* readPtr;
         ma_uint32 framesToRead = std::min<uint32_t>(readRemaining, 512);
+
         ma_pcm_rb_acquire_read(&m_rawBuffer, &framesToRead, &readPtr);
         memcpy(&buffer, readPtr, sizeof(AudioFrame) * framesToRead);
         ma_pcm_rb_commit_read(&m_rawBuffer, framesToRead, readPtr);
+
+        //exit early if no audio data to read
         if (framesToRead == 0) break;
         readRemaining -= framesToRead;
 
+        //drop old values from audio buffer
         if (m_audioBuffer.count() + framesToRead > m_audioBuffer.capacity()) {
             m_audioBuffer.drop((m_audioBuffer.count() + framesToRead) - m_audioBuffer.capacity());
         }

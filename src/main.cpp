@@ -60,6 +60,7 @@ int main(int argc, const char** argv) {
                 }
 
                 if (app.isIconified()) {
+                    //do not render or process audio if paused
                     glfwWaitEvents();
                 } else {
                     glfwPollEvents();

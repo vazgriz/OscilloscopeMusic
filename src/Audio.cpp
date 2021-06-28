@@ -5,6 +5,10 @@
 Audio::Audio(const char* filename, App& app) {
     m_app = &app;
 
+    //init miniaudio
+    //device is the audio playback device (ie OS sound output)
+    //decoder is the user selected audio file
+
     ma_decoder_config decoderConfig = ma_decoder_config_init(ma_format_f32, 2, SAMPLE_RATE);
     if (ma_decoder_init_file(filename, &decoderConfig, &m_decoder) != MA_SUCCESS) {
         throw std::runtime_error("Could not open file");
@@ -37,6 +41,9 @@ void Audio::audioCallback(ma_device* pDevice, void* pOutput, const void* pInput,
 
     ma_decoder* pDecoder = &audio->m_decoder;
 
+    //read data from decoder -> device
     ma_decoder_read_pcm_frames(pDecoder, pOutput, frameCount);
-    audio->m_app->addAudioSamples(frameCount, static_cast<AudioFrame*>(pOutput));
+
+    //extract audio samples for visualization
+    audio->m_app->addAudioSamples(frameCount, static_cast<AudioFrame*>(pOutput));   //just read from pOutput who cares
 }

@@ -10,6 +10,7 @@ public:
     virtual void render(float dt, vk::CommandBuffer& commandBuffer) = 0;
 };
 
+//more or less copied from vulkan-tutorial.com
 class Renderer {
     struct QueueFamilyIndices {
         std::optional<uint32_t> graphics;

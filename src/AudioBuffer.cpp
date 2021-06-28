@@ -12,6 +12,7 @@ size_t AudioBuffer::getRealIndex(size_t index) const {
 }
 
 void AudioBuffer::drop(size_t count) {
+    //drop old data and advance start index
     count = std::min<size_t>(m_count, count);
     m_start = getRealIndex(count);
     m_count -= count;

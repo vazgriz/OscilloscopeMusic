@@ -2,6 +2,8 @@
 #include <vector>
 #include "Audio.h"
 
+//fixed size ring buffer
+//oldest values are dropped when new data is appended
 class AudioBuffer {
 public:
     AudioBuffer(size_t capacity);

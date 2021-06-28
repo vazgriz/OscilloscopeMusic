@@ -84,7 +84,9 @@ void Line::render(float dt, vk::CommandBuffer& commandBuffer) {
 }
 
 void Line::createMesh() {
+    //if no new data, reuse mesh from previous frame
     if (!m_dirty) return;
+
     m_vertices.clear();
     m_indices.clear();
     uint32_t index = 0;

@@ -14,8 +14,13 @@ layout(binding = 0) uniform UBO {
 } ubo;
 
 void main() {
+    //expand vertices along normals
     gl_Position = ubo.proj * vec4(inPosAlpha.xyz + inNormalWidth.xyz * ubo.colorWidth.w * inNormalWidth.w, 1.0);
+
+    //calculate where the center of each line segment is (project without expanding)
     vec2 clip = (ubo.proj * vec4(inPosAlpha.xy, 0.0, 1.0)).xy;
     fragLineCenter = ((clip + vec2(1.0, 1.0)) / 2.0) * ubo.screenSize;
+
+    //pass width and alpha
     fragWidthAlpha = vec2(inNormalWidth.w, inPosAlpha.w * inNormalWidth.w);
 }
